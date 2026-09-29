@@ -1,0 +1,53 @@
+﻿"Work Item ID","Parent","Space Name","Space Key","Work Type","Summary","Description","Priority","Labels"
+"1000","","Financial Sales Analytics","FIN","Epic","Build Finance Sales Analytics and Jira MCP Solution","Build a simplified finance sales analytics solution in Snowflake using Bronze, Silver, and Gold layers. Add a semantic view, Snowflake MCP server, Jira MCP connector, and Cortex Agent for AI-powered bug analysis.","High","snowflake-mcp"
+"1100","1000","Financial Sales Analytics","FIN","Story","Create Bronze finance source tables","Create and populate BRONZE.CUSTOMERS, BRONZE.PRODUCTS, BRONZE.SALES, and BRONZE.PAYMENTS.
+
+Acceptance Criteria:
+1. SALES contains one row per ORDER_ITEM_ID.
+2. PAYMENTS contains one row per PAYMENT_ID.
+3. Orders 1001 and 1004 contain split-payment test data.","High","bronze"
+"1200","1000","Financial Sales Analytics","FIN","Story","Build Silver dimensions and sales fact","Create DIM_CUSTOMER, DIM_PRODUCT, DIM_DATE, and FACT_SALES.
+
+Acceptance Criteria:
+1. FACT_SALES remains at one row per ORDER_ITEM_ID.
+2. Payments are aggregated to ORDER_ID before joining to sales.
+3. FACT_SALES contains no duplicate ORDER_ITEM_ID values.","Highest","silver"
+"1300","1000","Financial Sales Analytics","FIN","Story","Create Gold KPI view and semantic view","Create GOLD.VW_SALES_KPI and FINANCE_SALES_SEMANTIC_VIEW.
+
+The solution should expose order count, customers, units sold, gross revenue, net revenue, margin, average order value, and split-payment order count by date, region, customer segment, product category, channel, and payment pattern.","High","gold-semantic"
+"1400","1000","Financial Sales Analytics","FIN","Story","Connect Snowflake Cortex Agent to Jira using MCP","Create the Snowflake finance MCP server, Atlassian Jira external MCP connector, and FINANCE_JIRA_AGENT.
+
+Acceptance Criteria:
+1. The agent can retrieve Jira issues.
+2. The agent can analyze finance KPIs through Cortex Analyst.
+3. The agent can execute read-only SQL diagnostics.
+4. The agent separates Jira facts, Snowflake evidence, and hypotheses.","Highest","jira-mcp-agent"
+"1500","1000","Financial Sales Analytics","FIN","Task","Validate Jira issue retrieval through Cortex Agent","Authenticate the Atlassian MCP connector and ask the Cortex Agent to list accessible Jira spaces and retrieve a known FIN bug with its description, priority, labels, comments, and linked work items.","High","agent-test"
+"1600","1000","Financial Sales Analytics","FIN","Bug","Revenue is duplicated for split-payment orders","Finance users report that revenue is overstated for orders completed using multiple successful payment methods. Single-payment orders appear correct.
+
+Affected Objects:
+- FINANCE_DEMO_DB.BRONZE.SALES
+- FINANCE_DEMO_DB.BRONZE.PAYMENTS
+- FINANCE_DEMO_DB.SILVER.FACT_SALES
+- FINANCE_DEMO_DB.GOLD.VW_SALES_KPI
+
+Steps to Reproduce:
+1. Join SILVER.FACT_SALES directly to BRONZE.PAYMENTS on ORDER_ID.
+2. Filter PAYMENT_STATUS = 'SUCCESS'.
+3. Aggregate NET_SALES_AMOUNT.
+4. Compare the result with SILVER.FACT_SALES.
+
+Expected Result:
+Revenue is counted once per ORDER_ITEM_ID and Gold totals match Silver totals.
+
+Actual Result:
+Order 1001 has 2 sales rows and 2 successful payments, producing 4 joined rows. Order 1004 has 2 sales rows and 3 successful payments, producing 6 joined rows. Revenue and margin are overstated.
+
+Likely Cause:
+A many-to-many join is created between item-grain sales and payment-grain data.
+
+Acceptance Criteria:
+1. Payments are aggregated to one row per ORDER_ID before joining.
+2. FACT_SALES remains one row per ORDER_ITEM_ID.
+3. Gold revenue matches Silver revenue.
+4. Split-payment orders do not duplicate revenue.","Highest","duplicate-revenue"

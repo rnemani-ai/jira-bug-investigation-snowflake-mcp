@@ -1,0 +1,111 @@
+USE ROLE ACCOUNTADMIN;
+
+-- ============================================================================
+-- 1. DATABASE, SCHEMAS AND WAREHOUSE
+-- ============================================================================
+
+CREATE OR REPLACE DATABASE FINANCE_DEMO_DB;
+
+CREATE OR REPLACE SCHEMA FINANCE_DEMO_DB.BRONZE;
+CREATE OR REPLACE SCHEMA FINANCE_DEMO_DB.SILVER;
+CREATE OR REPLACE SCHEMA FINANCE_DEMO_DB.GOLD;
+
+CREATE OR REPLACE WAREHOUSE FINANCE_DEMO_WH
+    WAREHOUSE_SIZE = 'XSMALL'
+    AUTO_SUSPEND = 60
+    AUTO_RESUME = TRUE
+    INITIALLY_SUSPENDED = TRUE;
+
+USE WAREHOUSE FINANCE_DEMO_WH;
+
+
+-- ============================================================================
+-- 2. BRONZE TABLES
+-- ============================================================================
+
+CREATE OR REPLACE TABLE FINANCE_DEMO_DB.BRONZE.CUSTOMERS (
+    CUSTOMER_ID        NUMBER,
+    CUSTOMER_NAME      VARCHAR(100),
+    CUSTOMER_SEGMENT   VARCHAR(30),
+    CITY               VARCHAR(50),
+    REGION             VARCHAR(30),
+    INGESTED_AT        TIMESTAMP_NTZ
+);
+
+CREATE OR REPLACE TABLE FINANCE_DEMO_DB.BRONZE.PRODUCTS (
+    PRODUCT_ID          NUMBER,
+    PRODUCT_NAME        VARCHAR(100),
+    PRODUCT_CATEGORY    VARCHAR(50),
+    UNIT_COST           NUMBER(12,2),
+    LIST_PRICE          NUMBER(12,2),
+    INGESTED_AT         TIMESTAMP_NTZ
+);
+
+-- Grain: one row per ORDER_ITEM_ID.
+CREATE OR REPLACE TABLE FINANCE_DEMO_DB.BRONZE.SALES (
+    ORDER_ITEM_ID       NUMBER,
+    ORDER_ID            NUMBER,
+    ORDER_DATE          DATE,
+    CUSTOMER_ID         NUMBER,
+    PRODUCT_ID          NUMBER,
+    SALES_CHANNEL       VARCHAR(30),
+    ORDER_STATUS        VARCHAR(30),
+    QUANTITY            NUMBER,
+    UNIT_SELLING_PRICE  NUMBER(12,2),
+    DISCOUNT_AMOUNT     NUMBER(12,2),
+    TAX_AMOUNT          NUMBER(12,2),
+    INGESTED_AT         TIMESTAMP_NTZ
+);
+
+-- Grain: one row per PAYMENT_ID.
+-- An order can have multiple payment records because of split payments.
+CREATE OR REPLACE TABLE FINANCE_DEMO_DB.BRONZE.PAYMENTS (
+    PAYMENT_ID          NUMBER,
+    ORDER_ID            NUMBER,
+    PAYMENT_DATE        DATE,
+    PAYMENT_METHOD      VARCHAR(30),
+    PAYMENT_STATUS      VARCHAR(30),
+    PAYMENT_AMOUNT      NUMBER(12,2),
+    TRANSACTION_REF     VARCHAR(100),
+    INGESTED_AT         TIMESTAMP_NTZ
+);
+-- ============================================================================
+-- 3. SYNTHETIC DATA
+-- ============================================================================
+
+INSERT INTO FINANCE_DEMO_DB.BRONZE.CUSTOMERS VALUES
+(101, 'Aarav Sharma', 'Retail',    'Delhi',     'North', CURRENT_TIMESTAMP()),
+(102, 'Meera Iyer',   'Premium',   'Bengaluru', 'South', CURRENT_TIMESTAMP()),
+(103, 'Rohan Gupta',  'Retail',    'Mumbai',    'West',  CURRENT_TIMESTAMP()),
+(104, 'Ishita Verma', 'Corporate', 'Gurugram',  'North', CURRENT_TIMESTAMP()),
+(105, 'Kabir Singh',  'Premium',   'Pune',      'West',  CURRENT_TIMESTAMP());
+
+INSERT INTO FINANCE_DEMO_DB.BRONZE.PRODUCTS VALUES
+(201, 'Business Laptop',       'Electronics', 52000, 72000, CURRENT_TIMESTAMP()),
+(202, 'Monitor',               'Electronics', 12000, 18000, CURRENT_TIMESTAMP()),
+(203, 'Wireless Keyboard',     'Accessories',  1800,  3000, CURRENT_TIMESTAMP()),
+(204, 'Office Desk',           'Furniture',    9000, 15000, CURRENT_TIMESTAMP()),
+(205, 'Ergonomic Chair',       'Furniture',    7000, 12000, CURRENT_TIMESTAMP()),
+(206, 'Noise Cancelling Headset','Accessories',4500, 7500, CURRENT_TIMESTAMP());
+
+INSERT INTO FINANCE_DEMO_DB.BRONZE.SALES VALUES
+(5001, 1001, '2026-06-01', 101, 201, 'ONLINE', 'COMPLETED', 1, 70000, 2000, 12240, CURRENT_TIMESTAMP()),
+(5002, 1001, '2026-06-01', 101, 203, 'ONLINE', 'COMPLETED', 2,  3000,    0,  1080, CURRENT_TIMESTAMP()),
+(5003, 1002, '2026-06-02', 102, 204, 'BRANCH', 'COMPLETED', 2, 15000, 1000,  5220, CURRENT_TIMESTAMP()),
+(5004, 1002, '2026-06-02', 102, 205, 'BRANCH', 'COMPLETED', 4, 12000,  500,  8550, CURRENT_TIMESTAMP()),
+(5005, 1003, '2026-06-03', 103, 202, 'ONLINE', 'COMPLETED', 1, 18000,  500,  3150, CURRENT_TIMESTAMP()),
+(5006, 1004, '2026-06-04', 104, 201, 'BRANCH', 'COMPLETED', 3, 72000, 5000, 37980, CURRENT_TIMESTAMP()),
+(5007, 1004, '2026-06-04', 104, 206, 'BRANCH', 'COMPLETED', 2,  7500,    0,  2700, CURRENT_TIMESTAMP()),
+(5008, 1005, '2026-06-05', 105, 205, 'ONLINE', 'CANCELLED', 1, 12000,    0,     0, CURRENT_TIMESTAMP());
+
+-- Orders 1001 and 1004 use split payments.
+INSERT INTO FINANCE_DEMO_DB.BRONZE.PAYMENTS VALUES
+(9001, 1001, '2026-06-01', 'CREDIT_CARD',  'SUCCESS', 50000, 'TXN-1001-A', CURRENT_TIMESTAMP()),
+(9002, 1001, '2026-06-01', 'UPI',          'SUCCESS', 37320, 'TXN-1001-B', CURRENT_TIMESTAMP()),
+(9003, 1002, '2026-06-02', 'BANK_TRANSFER','SUCCESS', 90270, 'TXN-1002-A', CURRENT_TIMESTAMP()),
+(9004, 1003, '2026-06-03', 'UPI',          'SUCCESS', 20650, 'TXN-1003-A', CURRENT_TIMESTAMP()),
+(9005, 1004, '2026-06-04', 'BANK_TRANSFER','SUCCESS',100000, 'TXN-1004-A', CURRENT_TIMESTAMP()),
+(9006, 1004, '2026-06-04', 'CREDIT_CARD',  'SUCCESS', 90000, 'TXN-1004-B', CURRENT_TIMESTAMP()),
+(9007, 1004, '2026-06-04', 'UPI',          'SUCCESS', 76680, 'TXN-1004-C', CURRENT_TIMESTAMP()),
+(9008, 1005, '2026-06-05', 'UPI',          'FAILED',  12000, 'TXN-1005-A', CURRENT_TIMESTAMP());
+
