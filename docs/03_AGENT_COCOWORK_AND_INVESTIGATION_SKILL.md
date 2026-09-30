@@ -1,28 +1,25 @@
 # Agent, CoWork and Investigation Skill
 
-## 1. Document Purpose
+## Document Purpose
 
 This document explains how the project evolved from a basic Cortex Agent into an **evidence-driven Jira investigation Agent** with a reusable investigation skill.
 
 It focuses on:
 
-- CoCo-based Agent development
-- CoWork skill development
+- CoWork-based skill development
 - Investigation-skill architecture
-- Agent version evolution
-- Evidence handling
-- RCA classification
-- Business-impact classification
+- Evidence handling and source boundaries
 - Data and grain validation
-- GitHub implementation investigation
+- RCA and business-impact classification
+- Agent version evolution
 - Persona behavior
 - Human approval for Jira actions
-- FSP-8 investigation behavior
-- Evaluation of the Agent
+- CoCo and CoWork roles
+- Evaluation lessons
+- Current implementation boundaries
 
-The goal is to explain not only **what the Agent does**, but **why the skill and orchestration rules were necessary**.
+> **Document boundary:** Document 02 covers the concrete Snowflake/MCP/Agent implementation. Document 04 contains the detailed FSP-8 investigation case study. This document focuses on the **behavioral methodology, skill design, governance, and Agent evolution** that make those technical components work together.
 
----
 
 # 2. Why an Investigation Skill Was Needed
 
@@ -796,159 +793,39 @@ The current Agent orchestration follows this high-level sequence:
 
 ---
 
-# 22. FSP-8 Investigation Skill in Action
+# FSP-8 as a Skill Validation Example
 
-The FSP-8 workflow illustrates how the skill operates.
+FSP-8 provides a concrete example of the investigation methodology without serving as the full case study.
 
-## Step 1 — Jira Retrieval
-
-The Agent retrieves:
+The skill applies the following sequence:
 
 ```text
-FSP-8
-Revenue is duplicated for split-payment orders
+Jira report
+   ↓
+Snowflake availability
+   ↓
+Grain and join analysis
+   ↓
+GitHub implementation inspection
+   ↓
+Source reconciliation
+   ↓
+RCA / impact classification
+   ↓
+Regression guidance
 ```
 
-It reads the issue's:
+For the current POC, the skill correctly distinguishes:
 
-- description
-- expected result
-- actual result
-- reproduction steps
-- acceptance criteria
-- comments
-- priority
-- label
+- **Jira:** documents the reported revenue-duplication issue and acceptance criteria.
+- **Snowflake:** contains payment data but the current `SALES`, `FACT_SALES`, and Gold runtime paths needed for full reproduction are empty.
+- **GitHub:** contains transformation logic that aggregates successful payments by `ORDER_ID` before joining to sales.
+- **Runtime status:** full end-to-end reproduction is therefore **blocked**.
+- **Implementation status:** the payment-aggregation pattern is confirmed in the inspected transformation, but that does not establish runtime validation.
+- **Conflicting evidence:** the Order 1004 item-count discrepancy is surfaced rather than silently resolved.
 
----
+The complete FSP-8 investigation, including source evidence, transformation details, conflicts, impact analysis, and regression checks, belongs in **Document 04**.
 
-## Step 2 — Snowflake Availability
-
-The Agent checks:
-
-```text
-BRONZE.SALES
-BRONZE.PAYMENTS
-SILVER.FACT_SALES
-GOLD.VW_SALES_KPI
-```
-
-Current state:
-
-```text
-SALES          0
-PAYMENTS       8
-FACT_SALES     0
-GOLD           0
-```
-
-Therefore the Agent recognizes:
-
-```text
-Full runtime reproduction is blocked.
-```
-
----
-
-## Step 3 — Grain Analysis
-
-The Agent identifies:
-
-```text
-SALES
-ORDER_ITEM_ID grain
-
-PAYMENTS
-PAYMENT_ID grain
-```
-
-This supports the technical explanation of the potential many-to-many problem.
-
----
-
-## Step 4 — GitHub Investigation
-
-The Agent inspects the repository transformation.
-
-It finds a payment-summary pattern:
-
-```text
-GROUP BY ORDER_ID
-```
-
-before the final sales join.
-
-This supports:
-
-```text
-Fix logic confirmed in transformation.
-```
-
-It does not support:
-
-```text
-Runtime behavior validated.
-```
-
----
-
-## Step 5 — Test Data Investigation
-
-The Agent inspects repository test data.
-
-It finds:
-
-```text
-1001
-2 items
-2 payments
-
-1004
-2 items
-3 payments
-```
-
-This supports the multiplication examples.
-
----
-
-## Step 6 — Conflict Analysis
-
-The Agent compares the repository evidence with Jira comments and issue description.
-
-The Order 1004 discrepancy is explicitly surfaced.
-
----
-
-## Step 7 — RCA
-
-The Agent explains the many-to-many mechanism.
-
-It does not overstate the result as a current runtime reproduction.
-
----
-
-## Step 8 — Impact
-
-The Agent identifies what is documented versus what can actually be measured.
-
-Because the required sales/fact/gold runtime data is empty, current runtime financial impact is not independently quantifiable.
-
----
-
-## Step 9 — Regression Tests
-
-The Agent proposes checks for:
-
-```text
-FACT_SALES grain
-Source-to-target reconciliation
-Gold-to-Silver reconciliation
-Split-payment behavior
-Duplicate detection
-```
-
----
 
 # 23. Regression-Test Guidance
 
@@ -1427,5 +1304,3 @@ Regression guidance
       ↓
 Human-approved action
 ```
-
-This is the core of the project's Agent design.
