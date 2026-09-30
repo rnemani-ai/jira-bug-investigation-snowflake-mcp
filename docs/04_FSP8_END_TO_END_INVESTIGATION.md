@@ -1,36 +1,20 @@
 # FSP-8 End-to-End Investigation
 
-## 1. Case Study Purpose
+## Document Purpose
 
-This document provides the detailed end-to-end investigation of the representative Jira issue:
+This document is the detailed **case study** for the representative Jira issue **FSP-8 — Revenue is duplicated for split-payment orders**.
 
-> **FSP-8 — Revenue is duplicated for split-payment orders**
+It focuses on the actual investigation path and the evidence obtained from **Jira, Snowflake, and GitHub**. It is intentionally narrower than the other project documents:
 
-FSP-8 was selected because it exercises the complete architecture:
+- **Document 01** explains the overall project journey and architectural evolution.
+- **Document 02** is the implementation reference for Snowflake objects, MCPs, Agent wiring, RBAC, and integration configuration.
+- **Document 03** explains the reusable investigation skill, CoWork/CoCo workflow, evidence rules, personas, and governance behavior.
+- **This document** explains what happened when that methodology was applied to **FSP-8**.
+- **Document 05** covers evaluation, governance, and engineering artifacts at the project level.
 
-```text
-Jira
-  ↓
-Cortex Agent
-  ↓
-Snowflake runtime investigation
-  ↓
-GitHub implementation investigation
-  ↓
-Evidence reconciliation
-  ↓
-Root-cause classification
-  ↓
-Business-impact classification
-  ↓
-Resolution guidance
-  ↓
-Regression-test guidance
-```
+> **Evidence boundary:** This case study distinguishes what Jira documents, what the repository implements, what current Snowflake data shows, and what cannot currently be validated.
 
-The investigation also demonstrates the most important governance principle in the project:
-
-> **The Agent must distinguish documented issue information, implementation evidence, and actual runtime evidence.**
+![FSP-8 Test Case](images/fsp8-test-case.png)
 
 ---
 
@@ -68,6 +52,8 @@ To Do
 
 ---
 
+---
+
 # 3. Affected Snowflake Objects
 
 The Jira issue identifies these affected objects:
@@ -96,6 +82,8 @@ GOLD.VW_SALES_KPI
 
 ---
 
+---
+
 # 4. Reported Problem
 
 The Jira issue describes a revenue-overstatement problem associated with orders completed using multiple successful payment methods.
@@ -115,6 +103,8 @@ ORDER_ID
 ```
 
 followed by aggregation of sales revenue.
+
+---
 
 ---
 
@@ -140,6 +130,8 @@ And:
 ```text
 Gold totals match Silver totals.
 ```
+
+---
 
 ---
 
@@ -191,6 +183,8 @@ many-to-many multiplication
 
 ---
 
+---
+
 # 7. Reported Expected Result
 
 The Jira acceptance criteria require:
@@ -203,6 +197,8 @@ The Jira acceptance criteria require:
 ```
 
 These acceptance criteria became the technical validation targets for the investigation.
+
+---
 
 ---
 
@@ -231,6 +227,8 @@ It is not yet treated as independently reproduced Snowflake behavior.
 
 ---
 
+---
+
 # 9. Second Investigation Step — Check Snowflake Runtime
 
 The Agent then checks the relevant Snowflake objects.
@@ -249,6 +247,8 @@ This is one of the most important findings in the investigation.
 The payment table contains current data.
 
 The sales, fact, and Gold objects needed to reproduce the full reported revenue behavior are empty.
+
+---
 
 ---
 
@@ -288,6 +288,8 @@ It is an evidence boundary that must be reported.
 
 ---
 
+---
+
 # 11. What the Agent Must Not Do
 
 The Agent must not:
@@ -300,6 +302,8 @@ The Agent must not:
 - claim the fix passed runtime testing
 
 The skill explicitly prevents these behaviors.
+
+---
 
 ---
 
@@ -367,6 +371,8 @@ This is the fundamental reason a direct join can multiply rows.
 
 ---
 
+---
+
 # 13. Demonstrating the Many-to-Many Problem
 
 Consider Order 1001.
@@ -420,6 +426,8 @@ The sales revenue can therefore be repeated across the four joined rows.
 
 ---
 
+---
+
 # 14. Order 1004
 
 The documented Order 1004 example has:
@@ -445,6 +453,8 @@ This is the same cardinality problem with a larger payment count.
 
 ---
 
+---
+
 # 15. Fourth Investigation Step — Inspect GitHub
 
 Because current Snowflake sales/fact/gold data is empty, the Agent needs another evidence source to inspect implementation behavior.
@@ -466,6 +476,8 @@ The key transformation examined during the investigation is:
 ```text
 00_setup/01_create_silver_layer.sql
 ```
+
+---
 
 ---
 
@@ -503,6 +515,8 @@ during the final sales join.
 
 ---
 
+---
+
 # 17. Why the Payment Summary Prevents Multiplication
 
 Without aggregation:
@@ -537,6 +551,8 @@ grain.
 
 ---
 
+---
+
 # 18. Payment Summary Is a Transformation Pattern
 
 An important implementation detail is that:
@@ -560,6 +576,8 @@ sales transformation
        ↓
 SILVER.FACT_SALES
 ```
+
+---
 
 ---
 
@@ -587,6 +605,8 @@ from:
 ```text
 item-level fact grain
 ```
+
+---
 
 ---
 
@@ -618,6 +638,8 @@ That distinction is preserved throughout the investigation.
 
 ---
 
+---
+
 # 21. Evidence Reconciliation
 
 At this point the Agent has four relevant evidence categories:
@@ -638,6 +660,8 @@ They answer different questions.
 | Snowflake | Current runtime data state |
 | GitHub SQL | Implementation logic |
 | GitHub test data | Repository test/supporting examples |
+
+---
 
 ---
 
@@ -670,6 +694,8 @@ The Agent must surface the conflict rather than silently choosing one statement.
 
 ---
 
+---
+
 # 23. How the Conflict Is Reported
 
 The correct evidence-aware interpretation is:
@@ -689,6 +715,8 @@ empty, so runtime cannot independently resolve the discrepancy.
 ```
 
 The repository evidence can corroborate the Jira description, but it should not be described as current production/runtime truth.
+
+---
 
 ---
 
@@ -712,6 +740,8 @@ ORDER_ID
 ```
 
 Because `ORDER_ID` is not unique on either side, a direct join can multiply records.
+
+---
 
 ---
 
@@ -742,6 +772,8 @@ It does not establish:
 ```text
 Runtime behavior validated.
 ```
+
+---
 
 ---
 
@@ -783,6 +815,8 @@ when the documented issue/root-cause mechanism is being reported together with t
 
 ---
 
+---
+
 # 27. Business Impact
 
 The issue is documented as a revenue-overstatement problem.
@@ -811,6 +845,8 @@ unless those values are independently supported.
 
 ---
 
+---
+
 # 28. Business-Impact Classification
 
 For the current investigation state:
@@ -830,6 +866,8 @@ Not Quantifiable with Current Data
 because the required runtime sales/fact/gold data is empty.
 
 This distinction is important for finance-facing reporting.
+
+---
 
 ---
 
@@ -868,6 +906,8 @@ grain.
 
 ---
 
+---
+
 # 30. Why the Resolution Is Grain-Safe
 
 The resolution preserves the grain of the fact table.
@@ -889,6 +929,8 @@ ORDER_ID-level payment summary
 ```
 
 Therefore payment information can be attached to each item without multiplying the number of item rows.
+
+---
 
 ---
 
@@ -921,6 +963,8 @@ The exact test should be adapted to the project's final SQL implementation.
 
 ---
 
+---
+
 # 32. Regression Test 2 — Payment Aggregation
 
 Verify that the payment summary produces:
@@ -950,6 +994,8 @@ Because `PAYMENT_SUMMARY` is a transformation/CTE, the exact test should be appl
 
 ---
 
+---
+
 # 33. Regression Test 3 — Split-Payment Orders
 
 Identify orders with:
@@ -970,6 +1016,8 @@ This specifically targets the class of defect represented by FSP-8.
 
 ---
 
+---
+
 # 34. Regression Test 4 — Source-to-Fact Reconciliation
 
 Compare relevant sales measures between the source and Silver fact.
@@ -985,6 +1033,8 @@ FACT_SALES amount
 for the appropriate grain and filtering rules.
 
 The exact business measure must be taken from the actual project transformation rather than invented.
+
+---
 
 ---
 
@@ -1008,6 +1058,8 @@ Gold revenue matches Silver revenue.
 
 ---
 
+---
+
 # 36. Regression Test 6 — Duplicate Detection
 
 A generic duplicate-detection check should identify unexpected multiplication.
@@ -1023,6 +1075,8 @@ more than one fact row per ORDER_ITEM_ID
 ```
 
 Any returned duplicates should trigger investigation.
+
+---
 
 ---
 
@@ -1059,6 +1113,8 @@ from:
 ```text
 Test executed successfully against populated runtime data
 ```
+
+---
 
 ---
 
@@ -1100,6 +1156,8 @@ Sales, fact, and Gold are empty.
 
 ---
 
+---
+
 # 39. What Was Not Proven
 
 The investigation does not prove:
@@ -1122,6 +1180,8 @@ These statements require additional evidence.
 
 ---
 
+---
+
 # 40. Evidence Matrix
 
 | Investigation Question | Evidence | Classification |
@@ -1140,198 +1200,6 @@ These statements require additional evidence.
 | Can current financial impact be measured? | Runtime data unavailable | Not quantifiable with current data |
 
 ---
-
-# 41. Agent Response Structure for FSP-8
-
-The investigation skill encourages a response structure similar to:
-
-```text
-Executive Summary
-        ↓
-Jira-Documented Evidence
-        ↓
-Snowflake Runtime Findings
-        ↓
-GitHub Implementation Findings
-        ↓
-Evidence Conflicts
-        ↓
-RCA Classification
-        ↓
-Business Impact
-        ↓
-Resolution
-        ↓
-Regression Tests
-        ↓
-Limitations
-```
-
-This makes the result useful to both technical and business audiences.
-
----
-
-# 42. Data Engineer View
-
-A Data Engineer primarily needs:
-
-```text
-Table grain
-Join behavior
-Transformation logic
-Runtime availability
-Regression tests
-```
-
-The investigation therefore emphasizes:
-
-```text
-ORDER_ITEM_ID
-PAYMENT_ID
-ORDER_ID
-many-to-many multiplication
-payment aggregation
-FACT_SALES grain
-```
-
----
-
-# 43. Finance Analyst View
-
-A Finance Analyst primarily needs:
-
-```text
-What is wrong with revenue?
-Which orders are affected?
-Can the impact be measured?
-Is the current result trustworthy?
-```
-
-The Agent should therefore explain:
-
-```text
-Split payments can create duplicated revenue when payment rows multiply sales rows.
-
-The current Snowflake runtime does not contain populated sales/fact/Gold data,
-so current financial impact cannot be independently measured.
-```
-
----
-
-# 44. Engineering Manager View
-
-An Engineering Manager needs:
-
-```text
-RCA status
-Evidence confidence
-Runtime status
-Risk
-Resolution
-Next action
-```
-
-The investigation therefore summarizes:
-
-```text
-Documented issue
-+
-implementation evidence
-+
-runtime validation blocked
-+
-grain-safe resolution pattern
-+
-regression-test requirements
-```
-
----
-
-# 45. Jira Update Governance
-
-If the investigation is converted into a Jira comment, the Agent must first display the proposed comment.
-
-The required boundary is:
-
-```text
-This comment has NOT been posted to Jira.
-
-Would you like me to post this comment to Jira?
-```
-
-No Jira write should occur before explicit user approval.
-
----
-
-# 46. Example Proposed Jira Comment Structure
-
-A safe proposed update would contain:
-
-```text
-Investigation Summary
-
-- Jira documents revenue duplication for split-payment orders.
-- Sales are item-grain and payments are payment-grain.
-- The documented join pattern can create many-to-many multiplication.
-- Repository transformation code aggregates successful payments by ORDER_ID before joining to sales.
-- Current Snowflake SALES, FACT_SALES and Gold data are empty, so runtime reproduction is blocked.
-- GitHub test data supports the documented 1001 and 1004 examples.
-- An inconsistency remains in Jira commentary for Order 1004 and cannot be independently resolved from current Snowflake runtime data.
-
-RCA:
-Documented Root Cause — Not Reproducible
-
-Business Impact:
-Documented; current runtime impact not quantifiable.
-
-Resolution:
-Aggregate payments to one row per ORDER_ID before joining to item-grain sales.
-
-Validation:
-Run fact-grain, reconciliation, split-payment and duplicate-detection regression tests once populated runtime data is available.
-```
-
-This is a **proposed** structure, not an automatically posted Jira comment.
-
----
-
-# 47. Investigation Decision Tree
-
-The Agent's reasoning can be summarized as:
-
-```text
-Is the issue documented in Jira?
-          │
-          ├── No → insufficient issue context
-          │
-          └── Yes
-               ↓
-       Is runtime data available?
-               │
-          ┌────┴────┐
-          │         │
-         No        Yes
-          │         │
-          ▼         ▼
-       Block      Reproduce
-       runtime       │
-       validation    ▼
-                 Validate grain
-                      │
-                      ▼
-                  Validate join
-                      │
-                      ▼
-                 Inspect GitHub
-                      │
-                      ▼
-               Reconcile evidence
-                      │
-                      ▼
-                 Classify RCA
-```
-
-If runtime data is unavailable, the Agent can still inspect implementation evidence but must stop short of claiming runtime validation.
 
 ---
 
@@ -1395,6 +1263,8 @@ Runtime behavior not yet validated
 
 ---
 
+---
+
 # 49. Engineering Takeaway
 
 FSP-8 demonstrates why enterprise AI investigation should not be treated as simple question answering.
@@ -1440,3 +1310,42 @@ What the current runtime actually proves
 ```
 
 That distinction is the central engineering lesson of the FSP-8 case study.
+
+---
+
+## Case-Study Summary
+
+The FSP-8 investigation demonstrates the intended behavior of the project:
+
+```text
+Jira report
+   ↓
+Snowflake runtime check
+   ↓
+Grain and join analysis
+   ↓
+GitHub transformation inspection
+   ↓
+Evidence reconciliation
+   ↓
+RCA / impact classification
+   ↓
+Resolution and regression guidance
+```
+
+The strongest supported conclusions are:
+
+| Finding | Evidence status |
+|---|---|
+| FSP-8 documents revenue duplication for split-payment orders | **Documented in Jira** |
+| Item-grain sales joined directly to payment-grain rows can multiply records | **Supported by grain/join analysis** |
+| Repository transformation aggregates successful payments by `ORDER_ID` before joining to sales | **Confirmed in implementation** |
+| Repository test data supports the 1001 and 1004 split-payment examples | **Supporting implementation/test evidence** |
+| Current Snowflake runtime reproduces the issue end-to-end | **Blocked** because `SALES`, `FACT_SALES`, and Gold are empty |
+| Current runtime validates the fix | **Blocked** |
+| Current financial impact can be measured | **Not quantifiable with current runtime data** |
+
+The case therefore illustrates an important distinction:
+
+> **A technically coherent RCA mechanism and a correctly implemented transformation are not the same thing as end-to-end runtime validation.**
+
