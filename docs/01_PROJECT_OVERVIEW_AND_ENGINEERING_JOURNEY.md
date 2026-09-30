@@ -6,54 +6,29 @@
 
 **Jira Bug Investigation with Snowflake MCP**
 
-### Project Purpose
+### Purpose
 
-This project is a Snowflake-native proof of concept for investigating enterprise data-quality and analytics issues using an AI Agent connected to multiple evidence sources.
-
-The solution brings together:
-
-- **Snowflake** for data, analytics, runtime validation, and semantic modeling
-- **Snowflake Cortex Agent** for investigation orchestration
-- **MCP** for standardized access to enterprise tools and systems
-- **Jira / Atlassian MCP** for business issue context
-- **GitHub MCP** for implementation and repository evidence
-- **Snowflake Git integration** for source-control and workspace workflows
-- **CoCo** for Cortex Agent configuration and testing
-- **CoWork** for reusable investigation-skill development
-- **Investigation Skills** for evidence integrity, RCA, impact analysis, and governance
-- **Personas** for audience-specific investigation responses
-- **RBAC** for controlled access
-- **Evaluation artifacts** for testing Agent behavior
+This project is a **Snowflake-native proof of concept for investigating enterprise data-quality and analytics issues with an AI Agent connected to multiple evidence sources**.
 
 The representative investigation is:
 
 > **FSP-8 — Revenue is duplicated for split-payment orders**
 
-The POC demonstrates how an AI Agent can investigate a data-quality issue across multiple enterprise systems while clearly separating:
+The project combines Snowflake, Cortex Agent, MCP integrations, Jira, GitHub, reusable investigation skills, governance controls, personas, and evaluation.
 
-- what was reported
-- what was observed
-- what was found in implementation
-- what is supported by evidence
-- what remains unverified
-- what conflicts
-- what cannot currently be validated
+The important capability is not simply retrieving information from multiple systems. It is **reconciling what each source can actually prove** and producing an evidence-bounded investigation.
+
+![Project Overview](images/project-overview.png)
 
 ---
 
-# 2. Why We Built This
+## 2. Why We Built This
 
-## 2.1 The Investigation Problem
+### 2.1 The Investigation Problem
 
-Enterprise data-quality issues are often distributed across multiple systems.
+Enterprise data-quality issues are rarely contained in one system.
 
-For example, a finance user may report an issue in Jira:
-
-```text
-Revenue is duplicated for split-payment orders.
-```
-
-The Jira issue may contain:
+A finance user may report an issue in Jira with:
 
 - business context
 - expected behavior
@@ -61,17 +36,13 @@ The Jira issue may contain:
 - reproduction steps
 - acceptance criteria
 - comments
-- labels
-- priority
 - suspected root cause
 
-However, Jira alone cannot prove whether the issue currently exists in the data platform.
+But Jira alone does not prove that the current data platform reproduces the issue.
 
-The relevant runtime data may exist in Snowflake.
+The relevant runtime data may be in Snowflake, while the transformation responsible for producing that data may be stored in GitHub.
 
-The transformation responsible for producing the data may exist in GitHub.
-
-Therefore, a complete investigation may require:
+A complete investigation can therefore require:
 
 ```text
 Jira
@@ -80,278 +51,189 @@ Snowflake
   ↓
 GitHub
   ↓
-Jira
+Evidence reconciliation
 ```
 
-The engineer must manually move between systems and reconcile the information.
+The engineer must otherwise move manually between systems and determine whether the information is consistent.
 
-More importantly, manual investigation creates a risk of overstating what has actually been proven.
+### 2.2 The Evidence Problem
 
-For example:
+The project was designed around a simple boundary:
 
-> Finding a SQL transformation that appears to address a bug does not prove that the deployed runtime is using that transformation.
+> **Finding evidence that a fix exists in source code does not prove that the deployed runtime is using that fix.**
 
 Similarly:
 
-> A Jira ticket reporting a defect does not independently prove that the current Snowflake environment reproduces the problem.
+> **A Jira ticket reporting a defect does not independently prove that the current Snowflake runtime reproduces the defect.**
 
-The POC was designed around this evidence boundary.
+This distinction became the central design principle for the Agent.
 
 ---
 
-# 3. Core Project Objective
+## 3. Core Objective
 
-The primary objective was to demonstrate an AI-powered investigation workflow that can answer:
+The primary objective was to demonstrate an investigation workflow that can answer:
 
 > **What happened, what evidence supports it, what can actually be reproduced, what does the implementation do, and what remains unverified?**
 
-The project therefore focuses on **evidence reconciliation**, rather than simply generating a natural-language summary.
+The project therefore emphasizes **evidence reconciliation rather than natural-language summarization**.
 
-The Agent connects three primary evidence domains:
+The three primary evidence domains are:
 
-```text
-                 BUSINESS CONTEXT
-                       │
-                       ▼
-                     Jira
-                       │
-                       ▼
-              ┌─────────────────┐
-              │  Cortex Agent   │
-              │  Investigation  │
-              │  Orchestration  │
-              └─────────────────┘
-                 │      │      │
-                 ▼      ▼      ▼
-              Jira   Snowflake GitHub
-               MCP      MCP      MCP
-                 │        │       │
-                 ▼        ▼       ▼
-             Reported  Runtime  Implementation
-              Issue     Data      Evidence
-                 │        │       │
-                 └────────┼───────┘
-                          ▼
-                 Evidence Synthesis
-                          │
-                          ▼
-                    RCA + Impact
-                          │
-                          ▼
-                  Bounded Conclusion
-```
-
----
-
-# 4. What We Wanted to Demonstrate
-
-## 4.1 Snowflake-Native Data Investigation
-
-Use Snowflake as the analytical and runtime evidence platform.
-
-The project uses:
-
-- Bronze
-- Silver
-- Gold
-- Semantic View
-- Snowflake MCP
-- Cortex Agent
-
----
-
-## 4.2 Multi-Source MCP Investigation
-
-Use MCP to expose different enterprise systems to the Agent while maintaining clear evidence boundaries.
-
-The completed POC uses:
-
-- **Atlassian Jira MCP**
-- **Snowflake Finance Analytics MCP**
-- **GitHub MCP**
-
-Each source has a distinct purpose.
-
-| Source | Primary evidence |
+| Source | Primary role |
 |---|---|
-| Jira | Reported business issue |
-| Snowflake | Runtime/data evidence |
-| GitHub | Implementation evidence |
+| **Jira** | Reported business issue and documented context |
+| **Snowflake** | Runtime/data evidence |
+| **GitHub** | Implementation and repository evidence |
 
-The Agent does not treat these sources as interchangeable.
-
----
-
-## 4.3 Evidence-Aware Reasoning
-
-The Agent distinguishes between:
-
-- **Confirmed**
-- **Documented**
-- **Likely**
-- **Unverified**
-- **Illustrative**
-- **Blocked**
-- **Conflict**
-
-This prevents a reported hypothesis from automatically becoming a confirmed root cause.
+The Agent uses these sources together but does **not** treat them as interchangeable.
 
 ---
 
-## 4.4 Runtime-Aware Investigation
+## 4. Design Principles
 
-The Agent checks whether the required Snowflake data actually exists.
+The engineering journey was driven by a small set of principles.
 
-If the required tables are empty, it must explicitly state that runtime validation is blocked.
+### 4.1 Evidence must have a clear source
 
-It must not create simulated rows and present them as Snowflake runtime evidence.
+The Agent should identify where an important claim came from.
 
----
+### 4.2 Runtime evidence is distinct from implementation evidence
 
-## 4.5 Code-to-Data Investigation
+GitHub can show what the transformation is designed to do.
 
-The POC connects:
+Snowflake can show what the current runtime contains.
 
-```text
-Jira business problem
-        ↓
-GitHub transformation
-        ↓
-Snowflake runtime
-```
+Neither should silently be substituted for the other.
 
-This allows the Agent to distinguish:
+### 4.3 Missing data is a valid investigation result
 
-- reported behavior
-- implementation logic
-- runtime behavior
+If required runtime tables are empty, the Agent should report that validation is blocked rather than manufacture a result.
 
----
+### 4.4 Conflicts should be surfaced
 
-## 4.6 Governed Investigation
+If Jira, GitHub, and Snowflake disagree, the Agent should identify the disagreement and preserve the source of each claim.
 
-The investigation is intentionally read-only.
+### 4.5 Investigation should be read-only
 
-The Agent should not:
+The Agent should investigate, classify, and propose safe next steps without changing the underlying data.
 
-- change Snowflake data
-- execute destructive SQL
-- silently modify Jira
-- claim that a fix is deployed without supporting evidence
+### 4.6 Capability and authority are different
 
-Jira updates require explicit human approval.
+The Agent may be capable of preparing a Jira update without being authorized to post it automatically.
+
+### 4.7 Personas change presentation, not evidence
+
+Different audiences may need different levels of technical or business detail, but the evidence and RCA classification should remain consistent.
 
 ---
 
-# 5. Starting Point and Reference Project
+## 5. Starting Point and Reference Project
 
-The project was inspired by the reference implementation:
-
-**Jira_Bug_Analysis_MCP_to_Snowflake**
-
-Reference repository:
+The project was inspired by:
 
 ```text
 deept-agl/Jira_Bug_Analysis_MCP_to_Snowflake
 ```
 
-The reference project provided the starting architectural idea for connecting Jira-related investigation with Snowflake and MCP.
+The reference implementation provided the starting architectural idea for connecting Jira-related investigation with Snowflake and MCP.
 
-The objective of this POC was not simply to reproduce the reference project.
+This POC was then extended around its own investigation requirements, including:
 
-The project was extended into a more evidence-driven investigation workflow with:
-
-- stronger evidence classification
-- explicit runtime validation
+- explicit evidence classification
+- runtime validation
 - GitHub implementation evidence
 - reusable investigation skills
 - persona-based responses
-- conflict detection
+- conflict handling
 - Jira write governance
 - regression-test guidance
 - lightweight evaluation
 
+The reference project is therefore treated as **inspiration/baseline**, not as a statement that the two implementations are identical.
+
 ---
 
-# 6. Engineering Journey
+## 6. Engineering Journey
 
-The project evolved incrementally.
+![Phase 1 and Phase 2](images/phase-1-phase-2.png)
 
-The major progression was:
+The project evolved incrementally:
 
 ```text
 01. Snowflake Foundation
-          ↓
+        ↓
 02. Bronze → Silver → Gold
-          ↓
+        ↓
 03. Semantic View
-          ↓
+        ↓
 04. Snowflake MCP
-          ↓
+        ↓
 05. Jira MCP
-          ↓
+        ↓
 06. Cortex Agent
-          ↓
+        ↓
 07. RBAC
-          ↓
+        ↓
 08. CoCo Configuration & Testing
-          ↓
+        ↓
 09. CoWork Investigation Skill
-          ↓
+        ↓
 10. Agent Skill Refinement
-          ↓
+        ↓
 11. GitHub Integration
-          ↓
+        ↓
 12. GitHub MCP
-          ↓
+        ↓
 13. Personas
-          ↓
+        ↓
 14. Evidence & Governance Rules
-          ↓
+        ↓
 15. FSP-8 End-to-End Investigation
-          ↓
+        ↓
 16. Evaluation
 ```
 
-Each stage addressed a specific capability rather than adding technology for its own sake.
+Each stage was added to solve a specific investigation problem rather than to increase the technology count.
 
 ---
 
-# 7. Stage 1 — Snowflake Foundation
+## 7. Stage 1 — Snowflake Foundation
 
-The first foundation was a small finance data environment.
+The first step was to create a small, controlled finance-data environment.
 
-## Database
+The core Snowflake foundation was:
 
 ```text
 FINANCE_DEMO_DB
-```
+    │
+    ├── BRONZE
+    ├── SILVER
+    └── GOLD
 
-## Warehouse
-
-```text
 FINANCE_DEMO_WH
 ```
 
-## Schemas
+The purpose was to create a realistic analytical environment in which the Agent could inspect:
 
-```text
-BRONZE
-SILVER
-GOLD
-```
+- source-oriented data
+- transformed data
+- business-level views
+- runtime availability
+- data grain
+- joins and reconciliation
 
-The purpose was to create a controlled environment where the investigation Agent could inspect a realistic analytical data flow.
+The environment was intentionally small because the project was developed in a Snowflake trial environment.
 
 ---
 
-# 8. Stage 2 — Bronze, Silver and Gold
+## 8. Stage 2 — Bronze, Silver and Gold
 
-The project uses an analytical layering pattern.
+The layered data model established the technical context required for investigation.
 
-## Bronze
+### Bronze
 
-Source-oriented tables:
+The source-oriented layer contains:
 
 ```text
 BRONZE.SALES
@@ -360,23 +242,16 @@ BRONZE.CUSTOMERS
 BRONZE.PRODUCTS
 ```
 
-Important grains include:
+Two grains became especially important:
 
 ```text
-SALES
-→ ORDER_ITEM_ID
-
-PAYMENTS
-→ PAYMENT_ID
+SALES    → ORDER_ITEM_ID / item grain
+PAYMENTS → PAYMENT_ID / payment grain
 ```
 
-This grain distinction became central to the FSP-8 investigation.
+### Silver
 
----
-
-## Silver
-
-The Silver layer contains:
+The transformed layer contains:
 
 ```text
 SILVER.FACT_SALES
@@ -385,39 +260,27 @@ SILVER.DIM_PRODUCT
 SILVER.DIM_DATE
 ```
 
-`FACT_SALES` is intended to remain at:
+`FACT_SALES` is intended to remain at `ORDER_ITEM_ID` grain.
 
-```text
-ORDER_ITEM_ID
-```
+The payment transformation follows the important pattern of summarizing successful payment information by `ORDER_ID` before joining it to item-grain sales.
 
-grain.
+### Gold
 
-The payment transformation uses a payment aggregation pattern where successful payments are summarized by:
-
-```text
-ORDER_ID
-```
-
-before being joined to item-grain sales.
-
-This prevents a direct many-to-many relationship between sales items and payment records.
-
----
-
-## Gold
-
-The Gold layer contains:
+The analytical layer contains:
 
 ```text
 GOLD.VW_SALES_KPI
 ```
 
-The Gold view exposes business-level metrics and dimensions used for analytical investigation.
+This provides business-level metrics and dimensions for analytical investigation.
+
+The detailed object definitions and transformation SQL are documented in:
+
+`docs/02_TECHNICAL_ARCHITECTURE_AND_IMPLEMENTATION.md`
 
 ---
 
-# 9. Stage 3 — Semantic View
+## 9. Stage 3 — Semantic View
 
 A Semantic View was added above the Gold layer:
 
@@ -425,81 +288,61 @@ A Semantic View was added above the Gold layer:
 FINANCE_DEMO_DB.GOLD.FINANCE_SALES_SEMANTIC_VIEW
 ```
 
-The purpose was to provide a business-oriented semantic layer for finance analytics.
+The purpose was to provide business-oriented context for finance analytics.
 
-The Semantic View became the foundation for the:
-
-```text
-finance-sales-analyst
-```
-
-tool in the internal Snowflake MCP server.
-
-This created two complementary investigation paths.
-
-### Business-level investigation
+This enabled a business-level investigation path:
 
 ```text
 Business question
       ↓
 Semantic View
       ↓
-finance-sales-analyst
+Cortex Analyst
 ```
 
-### Detailed technical investigation
+while preserving a separate technical investigation path through SQL.
 
-```text
-Technical question
-      ↓
-execute-finance-sql
-```
+The important architectural decision was to use **business semantics for business questions** while retaining direct SQL investigation for technical validation.
 
 ---
 
-# 10. Stage 4 — Snowflake MCP
+## 10. Stage 4 — Snowflake MCP
 
-An internal Snowflake MCP server was created:
+The internal Snowflake MCP server became the Agent's primary interface to the Snowflake environment.
+
+It provided two complementary capabilities:
 
 ```text
-FINANCE_DEMO_DB.GOLD.FINANCE_ANALYTICS_MCP_SERVER
+Finance Sales Analyst
+        +
+Execute Finance SQL
 ```
 
-It exposes two investigation capabilities.
+The first supports business-level analytical questions.
 
-## `finance-sales-analyst`
-
-Used for business-level finance and KPI analysis through the Semantic View.
-
-## `execute-finance-sql`
-
-Used for detailed technical investigation such as:
+The second supports technical investigation such as:
 
 - data availability
 - schema inspection
 - grain analysis
 - duplicate detection
-- reconciliation
+- source-to-target reconciliation
 - join analysis
 - detailed SQL investigation
 
-The Agent was explicitly instructed to keep investigation SQL read-only.
+This separation helped avoid forcing every investigation through a single query style.
+
+The exact MCP configuration is documented in:
+
+`docs/02_TECHNICAL_ARCHITECTURE_AND_IMPLEMENTATION.md`
 
 ---
 
-# 11. Stage 5 — Jira / Atlassian MCP
+## 11. Stage 5 — Jira / Atlassian MCP
 
-The next step was connecting the Agent to Jira.
+Jira was added as the business-context source.
 
-The project uses an external Atlassian MCP connection represented in Snowflake as:
-
-```text
-FINANCE_DEMO_DB.GOLD.ATLASSIAN_JIRA_MCP_SERVER
-```
-
-Authentication uses an OAuth dynamic-client flow.
-
-The Agent can retrieve Jira investigation context including:
+The Agent can retrieve investigation context such as:
 
 - Summary
 - Description
@@ -514,23 +357,19 @@ The Agent can retrieve Jira investigation context including:
 
 Jira became the source of **documented business evidence**.
 
-## Scope clarification
+### Scope clarification
 
 The completed FSP-8 investigation used the Atlassian MCP connection for Jira investigation.
 
 **Confluence was not used as an evidence source in the completed FSP-8 investigation.**
 
+This distinction is intentionally preserved so the architecture does not imply capabilities that were not demonstrated.
+
 ---
 
-# 12. Stage 6 — Cortex Agent
+## 12. Stage 6 — Cortex Agent
 
-The Cortex Agent was created as:
-
-```text
-FINANCE_DEMO_DB.GOLD.FINANCE_JIRA_AGENT
-```
-
-The Agent became the orchestration layer across:
+The Cortex Agent became the orchestration layer across:
 
 ```text
 Jira MCP
@@ -538,7 +377,7 @@ Snowflake MCP
 GitHub MCP
 ```
 
-Its responsibility was not simply to answer a question.
+The Agent's responsibility was expanded beyond simply answering a user question.
 
 It had to determine:
 
@@ -552,39 +391,35 @@ It had to determine:
 8. What remains unverified?
 9. What safe next steps can be proposed?
 
-This changed the project from a simple MCP demonstration into an investigation workflow.
+This was the point where the project moved from a basic MCP demonstration toward an **investigation workflow**.
 
 ---
 
-# 13. Stage 7 — RBAC and Access Control
+## 13. Stage 7 — RBAC and Access Control
 
-The project introduced a dedicated role:
+A dedicated investigation role was introduced:
 
 ```text
 FINANCE_AGENT_ROLE
 ```
 
-The role provides the access needed for the investigation workflow, including:
+The role provides the access required for the investigation workflow across the Snowflake environment.
 
-- warehouse usage
-- database/schema usage
-- required table access
-- Gold view access
-- Semantic View access
-- MCP access
-- Agent access
+The design follows a least-privilege approach for the investigation workload.
 
-The design follows a least-privilege principle for the investigation workload.
+The investigation path itself is read-only even though administrative setup may require higher Snowflake privileges.
 
-Administrative setup may require elevated Snowflake privileges, but the investigation itself is designed around read-only access.
+Detailed permissions are documented in:
+
+`docs/02_TECHNICAL_ARCHITECTURE_AND_IMPLEMENTATION.md`
 
 ---
 
-# 14. Stage 8 — Cortex CoCo
+## 14. Stage 8 — Cortex CoCo
 
 Snowflake Cortex / CoCo was used through the **browser/web interface** to configure and test the Agent and its integrations.
 
-The workflow included:
+The workflow was:
 
 ```text
 CoCo
@@ -602,7 +437,7 @@ Versioned Agent behavior
 Evaluation
 ```
 
-The CoCo environment was used to:
+CoCo was used to:
 
 - configure the Agent
 - connect MCP sources
@@ -612,22 +447,13 @@ The CoCo environment was used to:
 - refine instructions
 - validate the investigation workflow
 
-The project therefore involved both SQL/configuration work and interactive Cortex Agent development.
+This made the project both a SQL/configuration exercise and an interactive Cortex Agent engineering exercise.
 
 ---
 
-# 15. Stage 9 — CoWork Investigation Skill
+## 15. Stage 9 — CoWork Investigation Skill
 
-A reusable investigation skill was developed through the CoWork skill workflow.
-
-The skill was created as:
-
-```text
-jira-bug-investigation/
-└── SKILL.md
-```
-
-The CoWork workflow was:
+A reusable investigation skill was developed through the CoWork skill workflow:
 
 ```text
 CoWork
@@ -643,7 +469,7 @@ jira-bug-investigation
 
 The skill was designed to encode the investigation methodology rather than relying only on a large Agent prompt.
 
-The skill establishes rules for:
+The methodology covers:
 
 - evidence integrity
 - source classification
@@ -661,57 +487,53 @@ The skill establishes rules for:
 - read-only investigation
 - Jira approval
 
----
+The detailed skill design is documented in:
 
-# 16. Why the Investigation Skill Was Important
-
-Without a reusable skill, an Agent could produce a plausible narrative while silently making assumptions.
-
-The skill establishes boundaries such as:
-
-> Never invent missing evidence.
-
-> Actual Snowflake observations take precedence when the corresponding runtime data exists.
-
-> Jira claims are not automatically confirmed.
-
-> Empty source data blocks runtime validation.
-
-> Schema support does not prove runtime fix validation.
-
-> GitHub implementation evidence does not automatically prove deployment or production runtime behavior.
-
-This makes the investigation methodology reusable across multiple Jira data-quality issues.
+`docs/03_AGENT_COCOWORK_AND_INVESTIGATION_SKILL.md`
 
 ---
 
-# 17. Stage 10 — Agent Skill Evolution
+## 16. Why the Investigation Skill Was Important
 
-The Agent was iteratively refined.
+Without reusable investigation rules, an Agent could produce a plausible narrative while silently making assumptions.
 
-The major versions documented in the project were:
+The skill established boundaries such as:
 
-## Version 2
+> **Never invent missing evidence.**
+
+> **Actual Snowflake observations take precedence when the corresponding runtime data exists.**
+
+> **Jira claims are not automatically confirmed.**
+
+> **Empty source data blocks runtime validation.**
+
+> **Schema support does not prove runtime fix validation.**
+
+> **GitHub implementation evidence does not automatically prove deployment or production runtime behavior.**
+
+These rules make the investigation methodology reusable across multiple data-quality issues.
+
+---
+
+## 17. Stage 10 — Agent Skill Evolution
+
+The Agent was refined iteratively.
+
+### Version 2
 
 The investigation skill was attached and tested.
 
-The goal was to move the Agent toward a consistent evidence-based investigation pattern.
+The goal was to establish a consistent evidence-based investigation pattern.
 
----
+### Version 3
 
-## Version 3
+Persona behavior was introduced.
 
-Persona behavior was added.
+The same underlying investigation could now be presented differently for different audiences.
 
-The same underlying investigation could now be presented differently depending on the requested audience.
+### Version 4
 
----
-
-## Version 4
-
-Evidence and response behavior was strengthened.
-
-The refinement included:
+Evidence and response behavior was strengthened, including:
 
 - source identification
 - confirmed versus documented evidence
@@ -724,29 +546,31 @@ The refinement included:
 
 The completed evaluation runs used **Version 4**.
 
+The detailed Agent evolution and skill behavior are documented in:
+
+`docs/03_AGENT_COCOWORK_AND_INVESTIGATION_SKILL.md`
+
 ---
 
-# 18. Stage 11 — GitHub Integration
+## 18. Stage 11 — GitHub Integration
 
-A major enhancement was adding implementation evidence from the private GitHub repository.
-
-Repository:
+A major enhancement was adding implementation evidence from the private GitHub repository:
 
 ```text
 rnemani-ai/jira-bug-investigation-snowflake-mcp
 ```
 
-The repository was intentionally kept private.
+The reason for adding GitHub was straightforward:
 
-The Agent needed to answer a question that Snowflake runtime data alone could not answer:
+> **Snowflake runtime evidence can show what the current environment contains, but implementation evidence can show how the transformation is designed.**
 
-> **How is the transformation actually implemented?**
+This became especially important because the current Snowflake sales/fact/Gold runtime tables were empty during the completed investigation.
 
-This became particularly important because the current Snowflake sales/fact/gold runtime tables were empty.
+GitHub therefore provided a second evidence plane without being substituted for runtime validation.
 
 ---
 
-# 19. GitHub App
+## 19. GitHub App and Repository Access
 
 A dedicated GitHub App was created:
 
@@ -754,42 +578,32 @@ A dedicated GitHub App was created:
 Snowflake Jira Bug Investigation
 ```
 
-The App was installed only on the POC repository.
+It was installed only on the POC repository with scoped repository access.
 
-Repository-level access was used rather than broad organization-level access.
-
-The relevant read-oriented repository capabilities included:
+The relevant read-oriented capabilities included:
 
 - Contents
 - Metadata
 - Pull requests
 - Issues
 
-The purpose was to allow the GitHub MCP connector to inspect implementation evidence while keeping private repository access scoped to the POC.
+A real integration issue was encountered during development: the private repository was initially not visible to the GitHub integration until the GitHub App was correctly installed for the repository.
 
-A real integration issue was encountered during the POC: the private repository was initially not visible to the GitHub integration until the GitHub App was correctly installed for the repository.
+After repository-level installation was completed, the Agent could inspect the private repository.
 
-After the repository-level installation was completed, the Agent could inspect the private repository.
+This was an important engineering lesson:
+
+> **Private-repository MCP access depends on both connector configuration and correct repository-level authorization.**
 
 ---
 
-# 20. Stage 12 — Snowflake Git Integration
+## 20. Stage 12 — Snowflake Git Integration
 
-In addition to GitHub MCP, Snowflake Git integration was configured.
-
-Key objects include:
-
-```text
-FINANCE_DEMO_DB.GOLD.GITHUB_JIRA_POC_SECRET
-
-FINANCE_DEMO_DB.GOLD.GITHUB_JIRA_POC_API
-
-FINANCE_DEMO_DB.GOLD.JIRA_BUG_INVESTIGATION_REPO
-```
+Snowflake Git integration was configured alongside GitHub MCP.
 
 The repository was fetched successfully and a Snowflake Git workspace was created.
 
-This produced two complementary repository workflows:
+The two workflows serve complementary purposes:
 
 ```text
 Snowflake Git / Workspace
@@ -799,21 +613,25 @@ GitHub MCP
 Implementation evidence
 ```
 
-Snowflake Git/workspace provided the source-control and development workflow inside the Snowflake environment, while GitHub MCP allowed the Cortex Agent to inspect repository evidence.
+Snowflake Git/workspace supports source-control and development workflows inside the Snowflake environment.
+
+GitHub MCP allows the Cortex Agent to inspect repository evidence during an investigation.
+
+Detailed configuration is documented in:
+
+`docs/02_TECHNICAL_ARCHITECTURE_AND_IMPLEMENTATION.md`
 
 ---
 
-# 21. Stage 13 — GitHub MCP
+## 21. Stage 13 — GitHub MCP
 
-A GitHub MCP connector was configured and attached to the Cortex Agent.
-
-The connector is:
+The GitHub MCP connector was attached to the Cortex Agent:
 
 ```text
 GITHUB_BUG_INVESTIGATION
 ```
 
-It is used to inspect implementation evidence such as:
+It is used to inspect:
 
 - repository structure
 - transformation SQL
@@ -822,7 +640,7 @@ It is used to inspect implementation evidence such as:
 - commits/history
 - relevant implementation context
 
-The GitHub MCP became especially valuable when Snowflake runtime data was unavailable.
+The connector became particularly valuable when Snowflake runtime data was unavailable.
 
 It allowed the investigation to distinguish:
 
@@ -838,13 +656,13 @@ What the current Snowflake runtime can prove
 
 ---
 
-# 22. Stage 14 — Personas
+## 22. Stage 14 — Personas
 
-The Agent was enhanced with three implemented personas.
+Three personas were implemented:
 
-## Data Engineer
+### Data Engineer
 
-Focuses on:
+Focus:
 
 - table grain
 - joins
@@ -854,9 +672,9 @@ Focuses on:
 - runtime validation
 - technical implementation
 
-## Finance Analyst
+### Finance Analyst
 
-Focuses on:
+Focus:
 
 - revenue
 - orders
@@ -865,9 +683,9 @@ Focuses on:
 - business interpretation
 - business impact
 
-## Engineering Manager
+### Engineering Manager
 
-Focuses on:
+Focus:
 
 - RCA status
 - affected components
@@ -877,7 +695,7 @@ Focuses on:
 - limitations
 - next steps
 
-## Persona Design Principle
+### Persona design principle
 
 Personas change:
 
@@ -893,53 +711,51 @@ They do not change:
 
 ---
 
-# 23. Stage 15 — Evidence-Driven Investigation
+## 23. Stage 15 — Evidence-Driven Investigation
 
-At this point the project had three distinct evidence planes.
+At this point the project had three distinct evidence planes:
 
 ```text
                     INVESTIGATION
                          │
-        ┌────────────────┼────────────────┐
-        │                │                │
-        ▼                ▼                ▼
-      Jira           Snowflake         GitHub
-        │                │                │
-        ▼                ▼                ▼
-  Business report    Runtime data    Implementation
-  & documentation                     evidence
+          ┌──────────────┼──────────────┐
+          │              │              │
+          ▼              ▼              ▼
+        Jira         Snowflake       GitHub
+          │              │              │
+          ▼              ▼              ▼
+      Business        Runtime       Implementation
+      report          data           evidence
 ```
 
 Each source answers a different question.
 
 ### Jira
 
-> What was reported?
+> **What was reported?**
 
 ### Snowflake
 
-> What does the current data actually show?
+> **What does the current data actually show?**
 
 ### GitHub
 
-> How is the transformation implemented?
+> **How is the transformation implemented?**
 
-The Agent then reconciles the evidence.
+The Agent then reconciles these sources rather than collapsing them into a single undifferentiated answer.
 
 ---
 
-# 24. Stage 16 — FSP-8 as the Representative Investigation
+## 24. Stage 16 — FSP-8 as the Representative Investigation
 
-The project needed a realistic issue to exercise the architecture.
-
-The selected issue was:
+The project selected a realistic issue to exercise the complete architecture:
 
 ```text
 FSP-8
 Revenue is duplicated for split-payment orders
 ```
 
-The issue describes a potential many-to-many relationship between:
+The issue involves a potential grain mismatch between:
 
 ```text
 SALES
@@ -959,35 +775,36 @@ when joined directly on:
 ORDER_ID
 ```
 
-The investigation became the end-to-end demonstration of the architecture.
+The representative investigation is documented separately in:
+
+`docs/04_FSP8_END_TO_END_INVESTIGATION.md`
+
+![FSP-8 Test Case](images/fsp8-test-case.png)
 
 ---
 
-# 25. Why FSP-8 Was a Useful Test Case
+## 25. Why FSP-8 Was a Useful Test Case
 
-FSP-8 exercises several important investigation behaviors simultaneously.
+FSP-8 exercises several investigation behaviors simultaneously:
 
-It requires the Agent to:
+- understanding Jira documentation
+- checking Snowflake data availability
+- determining table grain
+- analyzing join cardinality
+- inspecting transformation SQL
+- inspecting test data
+- reconciling conflicting information
+- separating implementation evidence from runtime evidence
+- classifying RCA
+- classifying business impact
+- proposing regression tests
+- respecting the Jira approval boundary
 
-- understand Jira documentation
-- inspect Snowflake objects
-- determine data availability
-- understand table grain
-- investigate join cardinality
-- inspect transformation SQL
-- inspect test data
-- reconcile conflicting information
-- distinguish implementation evidence from runtime evidence
-- classify RCA
-- classify business impact
-- propose regression tests
-- respect the Jira approval boundary
-
-Therefore, the issue tests much more than simple Jira retrieval.
+It therefore tests substantially more than simple Jira retrieval.
 
 ---
 
-# 26. Critical Evidence Boundary
+## 26. Critical Evidence Boundary
 
 One of the most important lessons from the project is:
 
@@ -997,21 +814,18 @@ The GitHub repository contains a transformation pattern that aggregates successf
 
 That provides implementation evidence.
 
-However, the current Snowflake runtime state includes:
+However, the completed investigation found:
 
 ```text
-BRONZE.SALES = 0 rows
-
-BRONZE.PAYMENTS = 8 rows
-
-SILVER.FACT_SALES = 0 rows
-
-GOLD.VW_SALES_KPI = 0 rows
+BRONZE.SALES       = 0 rows
+BRONZE.PAYMENTS    = 8 rows
+SILVER.FACT_SALES  = 0 rows
+GOLD.VW_SALES_KPI  = 0 rows
 ```
 
-Therefore, the current environment does not provide populated sales/fact/gold data needed to independently reproduce the revenue duplication behavior.
+Therefore, the current environment did not provide populated sales/fact/Gold data needed to independently reproduce the revenue-duplication behavior.
 
-The Agent must therefore report:
+The Agent must report:
 
 > **Runtime reproduction is blocked by the current data state.**
 
@@ -1019,9 +833,9 @@ It must not convert GitHub test data into Snowflake runtime evidence.
 
 ---
 
-# 27. Evidence Conflict Handling
+## 27. Evidence Conflict Handling
 
-The investigation also exposed a conflict involving Order 1004.
+The investigation exposed a concrete discrepancy involving Order 1004.
 
 The Jira description describes:
 
@@ -1044,13 +858,18 @@ The current Snowflake sales table is empty.
 
 The important behavior is not simply choosing one number.
 
-The Agent must surface the conflict and identify the evidence source for each statement.
+The Agent must:
 
-This demonstrates that the investigation workflow is designed to **reconcile evidence rather than silently overwrite conflicting information**.
+1. identify the conflicting sources
+2. identify the evidence type for each statement
+3. explain why the current runtime cannot resolve the discrepancy
+4. avoid presenting one source as runtime truth without supporting data
+
+This demonstrates the project's emphasis on **evidence reconciliation rather than silent source selection**.
 
 ---
 
-# 28. Investigation Workflow
+## 28. Investigation Workflow
 
 The resulting investigation model is:
 
@@ -1081,43 +900,22 @@ The resulting investigation model is:
        ↓
 13. Define regression tests
        ↓
-14. Prepare bounded final response
+14. Produce bounded final response
        ↓
 15. Require human approval before Jira write
 ```
 
-The detailed architecture and exact technical implementation are documented separately in:
-
-```text
-docs/02_TECHNICAL_ARCHITECTURE_AND_IMPLEMENTATION.md
-```
+This sequence became the conceptual backbone of the investigation skill and Agent behavior.
 
 ---
 
-# 29. Evaluation Stage
+## 29. Evaluation Stage
 
-After the architecture and investigation workflow were established, the Agent behavior was evaluated.
+After the architecture and investigation workflow were established, Agent behavior was evaluated.
 
-A lightweight evaluation strategy was intentionally used first.
+A lightweight evaluation strategy was intentionally used first because the project was running in a Snowflake trial environment.
 
-The purpose was to validate the core investigation behavior without unnecessarily increasing Snowflake or Agent compute consumption.
-
-The evaluation framework contains:
-
-```text
-EVAL-001
-EVAL-002
-EVAL-003
-EVAL-004
-EVAL-005
-EVAL-006
-EVAL-007
-EVAL-008
-EVAL-009
-EVAL-010
-```
-
-The completed lightweight evaluation executed six representative scenarios:
+The evaluation framework contains ten scenarios, while six representative scenarios were executed for the completed POC:
 
 ```text
 EVAL-001
@@ -1141,103 +939,87 @@ The completed tests covered:
 - empty-data handling
 - Data Engineer persona behavior
 
-The remaining scenarios were optional and were not required for the completed POC demonstration.
+The detailed evaluation results are documented in:
 
-Detailed evaluation results are documented separately in:
-
-```text
-docs/05_EVALUATION_GOVERNANCE_AND_ENGINEERING_ARTIFACTS.md
-```
+`docs/05_EVALUATION_GOVERNANCE_AND_ENGINEERING_ARTIFACTS.md`
 
 ---
 
-# 30. What the Completed POC Demonstrates
+## 30. What the Completed POC Demonstrates
 
-The completed POC demonstrates a governed investigation pattern that combines:
+The completed POC demonstrates a governed investigation pattern combining:
 
 ```text
 Snowflake
-+
+    +
 Cortex Agent
-+
+    +
 MCP
-+
+    +
 Jira
-+
+    +
 GitHub
-+
+    +
 Snowflake Git
-+
+    +
 CoCo
-+
+    +
 CoWork
-+
-Reusable Skill
-+
+    +
+Investigation Skill
+    +
 Personas
-+
+    +
 Evidence Classification
-+
+    +
 RBAC
-+
+    +
 Human Approval
-+
+    +
 Evaluation
 ```
 
-The key capability is not any single technology.
+The value is not any individual technology.
 
-The value comes from connecting the technologies around a clearly defined investigation workflow.
+The value comes from connecting these technologies around a clearly defined investigation workflow.
 
 ---
 
-# 31. Key Engineering Lessons
+## 31. Key Engineering Lessons
 
-## 31.1 Multi-source access is valuable only when evidence boundaries are explicit
+### 31.1 Multi-source access is valuable only when evidence boundaries are explicit
 
 Giving an Agent access to multiple systems is not enough.
 
 The Agent must understand what each system can and cannot prove.
 
----
-
-## 31.2 Runtime evidence must remain separate from implementation evidence
+### 31.2 Runtime evidence must remain separate from implementation evidence
 
 A correct transformation in GitHub does not automatically prove that the current Snowflake runtime is executing it.
 
----
-
-## 31.3 Empty data is meaningful evidence
+### 31.3 Empty data is meaningful evidence
 
 An empty source table is not a reason to fabricate a result.
 
 It is a runtime-validation boundary.
 
----
-
-## 31.4 Schema support is not fix validation
+### 31.4 Schema support is not fix validation
 
 The existence of payment aggregation columns or other supporting schema does not prove that the deployed transformation is behaving correctly.
 
----
-
-## 31.5 Conflicting evidence should be surfaced
+### 31.5 Conflicting evidence should be surfaced
 
 The investigation should not silently choose one source when multiple sources disagree.
 
----
-
-## 31.6 Personas should not change factual conclusions
+### 31.6 Personas should not change factual conclusions
 
 Different audiences may need different explanations, but the evidence and RCA classification must remain consistent.
 
----
-
-## 31.7 Human approval separates investigation from action
+### 31.7 Human approval separates investigation from action
 
 The Agent can investigate and prepare a Jira update without automatically changing Jira.
 
-This creates a useful boundary:
+This creates an important boundary:
 
 ```text
 Capability
@@ -1245,19 +1027,17 @@ Capability
 Authority
 ```
 
----
-
-## 31.8 Lightweight evaluation can be useful for a POC
+### 31.8 Lightweight evaluation can be useful for a POC
 
 The six executed tests were intentionally representative.
 
-The goal was to validate core behavior and its boundaries before spending additional compute on a larger evaluation run.
+The goal was to validate core behavior and evidence boundaries before spending additional compute on a larger evaluation run.
 
 ---
 
-# 32. Final Project State
+## 32. Final Project State
 
-At the completed POC stage, the architecture contains:
+At the completed POC stage, the architecture can be summarized as:
 
 ```text
 User / Persona
@@ -1278,43 +1058,18 @@ Evidence     Runtime         Implementation
 │              │                │
 └──────────────┴────────────────┘
                ↓
-        Evidence Synthesis
+       Evidence Synthesis
                ↓
           RCA + Impact
                ↓
-     Regression-Test Guidance
+      Regression Guidance
                ↓
-      Proposed Jira Comment
+       Proposed Jira Comment
                ↓
-        Human Approval
+         Human Approval
 ```
 
-The underlying Snowflake platform is:
-
-```text
-FINANCE_DEMO_DB
-      │
-      ├── BRONZE
-      │     ├── SALES
-      │     ├── PAYMENTS
-      │     ├── CUSTOMERS
-      │     └── PRODUCTS
-      │
-      ├── SILVER
-      │     ├── FACT_SALES
-      │     ├── DIM_CUSTOMER
-      │     ├── DIM_PRODUCT
-      │     └── DIM_DATE
-      │
-      └── GOLD
-            ├── VW_SALES_KPI
-            ├── FINANCE_SALES_SEMANTIC_VIEW
-            ├── FINANCE_ANALYTICS_MCP_SERVER
-            ├── ATLASSIAN_JIRA_MCP_SERVER
-            └── FINANCE_JIRA_AGENT
-```
-
-The engineering workflow is supported by:
+The supporting engineering workflow includes:
 
 ```text
 CoCo
@@ -1330,11 +1085,11 @@ Evaluation Artifacts
 
 ---
 
-# 33. Implemented vs. Future
+## 33. Implemented vs. Future
 
 The project deliberately distinguishes implemented capabilities from future ideas.
 
-## Implemented
+### Implemented
 
 - Snowflake Bronze/Silver/Gold
 - Snowflake Semantic View
@@ -1362,7 +1117,7 @@ The project deliberately distinguishes implemented capabilities from future idea
 - Evaluation framework
 - Six executed evaluations with all six passing
 
-## Not Implemented in the Completed POC
+### Not Implemented in the Completed POC
 
 The following are future extensions rather than implemented components:
 
@@ -1381,11 +1136,11 @@ These items should not be represented as implemented components in the current a
 
 ---
 
-# 34. Future Direction
+## 34. Future Direction
 
 The architecture creates a foundation for additional evidence sources.
 
-One particularly natural future extension is **dbt**.
+One natural future extension is **dbt**.
 
 A future investigation could potentially connect:
 
@@ -1410,69 +1165,21 @@ dbt could provide additional evidence such as:
 
 Other enterprise integrations could be considered when they provide a distinct evidence or workflow capability.
 
-The principle is:
+The guiding principle is:
 
 > **Add integrations because they improve the investigation, not simply to increase the technology count.**
 
 ---
 
-# 35. Project Positioning
-
-This project should be presented as an:
-
-> **Evidence-driven enterprise data-quality investigation POC built with Snowflake Cortex Agent and MCP.**
-
-It is not simply:
-
-- a chatbot
-- a Jira summarizer
-- a Snowflake SQL assistant
-- a GitHub code-search tool
-
-The central product concept is:
-
-```text
-Business Context
-      ↓
-Tool-Grounded Investigation
-      ↓
-Cross-Source Evidence Reconciliation
-      ↓
-Evidence-Bounded RCA
-      ↓
-Governed Action
-```
-
-The Agent is valuable because it connects the investigation across business context, runtime data, implementation evidence, and governance boundaries.
-
----
-
-# 36. Summary
+## 35. Summary
 
 The project started with a simple question:
 
 > **Can an AI Agent help investigate a finance data-quality issue?**
 
-The final POC demonstrates a more precise answer:
+The completed POC demonstrates a more precise answer:
 
-> **An AI Agent can orchestrate a governed investigation across Jira, Snowflake and GitHub when each source has a clearly defined evidence boundary and the Agent is explicitly instructed to distinguish documented claims, implementation evidence and runtime observations.**
-
-The project combines:
-
-- **Snowflake** for the data platform
-- **Semantic Views** for business-level analytics
-- **MCP** for tool integration
-- **Jira** for business issue context
-- **GitHub** for implementation evidence
-- **Snowflake Git** for repository/workspace integration
-- **Cortex Agent** for orchestration
-- **CoCo** for Agent configuration and testing
-- **CoWork** for reusable skill development
-- **Investigation Skills** for consistent behavior
-- **Personas** for audience-specific presentation
-- **RBAC** for access control
-- **Human approval** for Jira actions
-- **Evaluation artifacts** for behavioral validation
+> **An AI Agent can orchestrate a governed investigation across Jira, Snowflake, and GitHub when each source has a clearly defined evidence boundary and the Agent is explicitly instructed to distinguish documented claims, implementation evidence, and runtime observations.**
 
 The most important design principle is:
 
