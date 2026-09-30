@@ -2,6 +2,9 @@
 
 ## 1. Document Purpose
 
+
+> **Document boundary:** This is the implementation reference. It focuses on concrete Snowflake objects, data-layer design, MCP configuration, Agent wiring, GitHub/Snowflake Git integration, RBAC, security controls, and technical execution flow. Detailed skill methodology, the full FSP-8 case study, and evaluation results belong in their dedicated documents.
+
 This document describes the **implemented technical architecture** of the Jira Bug Investigation with Snowflake MCP proof of concept.
 
 It focuses on the concrete implementation:
@@ -27,7 +30,7 @@ This document is intentionally more implementation-oriented than the project ove
 
 ---
 
-# 2. High-Level Architecture
+# 1. High-Level Architecture
 
 The implemented architecture is:
 
@@ -78,7 +81,7 @@ The implemented architecture is:
 
 ---
 
-# 3. Snowflake Platform Architecture
+# 2. Snowflake Platform Architecture
 
 ## 3.1 Database
 
@@ -105,7 +108,7 @@ FINANCE_DEMO_WH
 
 ---
 
-# 4. Bronze Layer
+# 3. Bronze Layer
 
 The Bronze layer represents source-oriented finance data.
 
@@ -172,7 +175,7 @@ instead of the expected two item-level rows.
 
 ---
 
-# 5. Silver Layer
+# 4. Silver Layer
 
 The Silver layer contains normalized analytical structures.
 
@@ -214,7 +217,7 @@ The implementation uses payment aggregation before joining payment information i
 
 ---
 
-# 6. Payment Aggregation Pattern
+# 5. Payment Aggregation Pattern
 
 The key transformation pattern is:
 
@@ -273,7 +276,7 @@ FACT_SALES remains one row per ORDER_ITEM_ID
 
 ---
 
-# 7. Gold Layer
+# 6. Gold Layer
 
 The Gold layer provides business-facing analytics.
 
@@ -300,7 +303,7 @@ The Gold layer is intended to provide a business-facing representation of the un
 
 ---
 
-# 8. Semantic View
+# 7. Semantic View
 
 The implemented Semantic View is:
 
@@ -326,7 +329,7 @@ This allows business questions to be handled through a semantic interface while 
 
 ---
 
-# 9. Snowflake MCP Architecture
+# 8. Snowflake MCP Architecture
 
 The internal MCP server is:
 
@@ -383,7 +386,7 @@ The Agent instructions restrict investigation activity to non-destructive SQL.
 
 ---
 
-# 10. Atlassian Jira MCP
+# 9. Atlassian Jira MCP
 
 The external Jira integration is represented in Snowflake as:
 
@@ -411,7 +414,7 @@ The Agent uses the Jira MCP connection to retrieve issue information.
 
 ---
 
-# 11. Jira Evidence Model
+# 10. Jira Evidence Model
 
 The Agent is instructed to inspect available Jira fields such as:
 
@@ -454,7 +457,7 @@ That distinction is fundamental to the implementation.
 
 ---
 
-# 12. GitHub Integration Architecture
+# 11. GitHub Integration Architecture
 
 The project uses a private GitHub repository:
 
@@ -476,7 +479,7 @@ They serve related but different purposes.
 
 ---
 
-# 13. GitHub App
+# 12. GitHub App
 
 A dedicated GitHub App was created:
 
@@ -499,7 +502,7 @@ This allows the Agent to inspect private repository evidence without giving it b
 
 ---
 
-# 14. GitHub MCP Connector
+# 13. GitHub MCP Connector
 
 The Snowflake connector is:
 
@@ -529,7 +532,7 @@ It is not treated as an automatic code modification mechanism.
 
 ---
 
-# 15. Snowflake Git Integration
+# 14. Snowflake Git Integration
 
 The project also configures Snowflake Git integration.
 
@@ -563,41 +566,7 @@ A Snowflake Git workspace was also created for the project.
 
 ---
 
-# 16. Repository Structure
-
-The repository is organized approximately as:
-
-```text
-jira-bug-investigation-snowflake-mcp/
-│
-├── README.md
-│
-├── cleanup/
-│
-├── JIRA_work_items/
-│
-├── 00_setup/
-│
-├── 01_mcp_and_agent/
-│
-└── skills/
-    └── jira-bug-investigation/
-        └── SKILL.md
-```
-
-Snowflake-managed skill content appears under:
-
-```text
-.snowflake/
-└── si/
-    └── skills/
-```
-
-The `.snowflake` directory is managed by the Snowflake environment and should not be treated as an ordinary project directory for manual cleanup.
-
----
-
-# 17. Cortex Agent
+# 15. Cortex Agent
 
 The principal Agent is:
 
@@ -631,7 +600,7 @@ GitHub
 
 ---
 
-# 18. Agent Orchestration
+# 16. Agent Orchestration
 
 The Agent follows a staged investigation process.
 
@@ -816,7 +785,7 @@ The human must explicitly approve the action.
 
 ---
 
-# 19. Investigation Skill Architecture
+# 17. Investigation Skill Architecture
 
 The reusable skill is:
 
@@ -852,69 +821,7 @@ It defines **how the Agent should reason about and present the evidence it retri
 
 ---
 
-# 20. Evidence Classification
-
-The investigation skill defines several evidence states.
-
-## Confirmed
-
-Supported by actual evidence available to the Agent.
-
-Example:
-
-```text
-Snowflake query returned the observed row count.
-```
-
----
-
-## Documented
-
-Reported by an external system such as Jira but not independently validated.
-
-Example:
-
-```text
-Jira reports that revenue is duplicated.
-```
-
----
-
-## Likely
-
-A technically supported interpretation that still lacks sufficient evidence for confirmation.
-
----
-
-## Unverified
-
-A claim for which sufficient supporting evidence has not been established.
-
----
-
-## Illustrative
-
-An example used for explanation rather than evidence.
-
-The Agent must never present illustrative values as observed runtime data.
-
----
-
-## Blocked
-
-The required evidence is unavailable.
-
-Example:
-
-```text
-SALES is empty.
-FACT_SALES is empty.
-Therefore runtime reproduction is blocked.
-```
-
----
-
-# 21. Schema Evidence vs Runtime Evidence
+# 18. Schema Evidence vs Runtime Evidence
 
 A critical implementation rule is:
 
@@ -944,281 +851,7 @@ To confirm runtime behavior, populated data and runtime validation are required.
 
 ---
 
-# 22. FSP-8 Technical Investigation
-
-The representative Jira issue is:
-
-```text
-FSP-8
-Revenue is duplicated for split-payment orders
-```
-
-Priority:
-
-```text
-Highest
-```
-
-Label:
-
-```text
-duplicate-revenue
-```
-
-Affected objects:
-
-```text
-FINANCE_DEMO_DB.BRONZE.SALES
-FINANCE_DEMO_DB.BRONZE.PAYMENTS
-FINANCE_DEMO_DB.SILVER.FACT_SALES
-FINANCE_DEMO_DB.GOLD.VW_SALES_KPI
-```
-
----
-
-# 23. FSP-8 Grain Problem
-
-The reported problematic join is conceptually:
-
-```sql
-FACT_SALES
-JOIN PAYMENTS
-  ON ORDER_ID
-```
-
-If an order contains:
-
-```text
-2 sales items
-2 successful payments
-```
-
-the join can produce:
-
-```text
-2 × 2 = 4 rows
-```
-
-instead of:
-
-```text
-2 rows
-```
-
-For Order 1001, the issue description reports:
-
-```text
-2 sales rows
-2 successful payments
-4 joined rows
-```
-
-For Order 1004, it reports:
-
-```text
-2 sales rows
-3 successful payments
-6 joined rows
-```
-
-This is the many-to-many multiplication pattern.
-
----
-
-# 24. GitHub Implementation Finding
-
-The repository implementation provides a safer pattern.
-
-Conceptually:
-
-```text
-PAYMENTS
-   │
-   ├── filter PAYMENT_STATUS = SUCCESS
-   │
-   ▼
-PAYMENT_SUMMARY
-GROUP BY ORDER_ID
-   │
-   ▼
-one payment summary row/order
-   │
-   ▼
-SALES
-ORDER_ITEM_ID grain
-```
-
-The final join therefore becomes:
-
-```text
-ORDER_ITEM_ID rows
-       +
-one payment summary row per ORDER_ID
-```
-
-rather than a direct payment-level many-to-many join.
-
-This supports:
-
-```text
-FACT_SALES remains at ORDER_ITEM_ID grain.
-```
-
----
-
-# 25. GitHub Test Data
-
-The repository test data supports:
-
-```text
-Order 1001:
-2 items
-2 payments
-
-Order 1004:
-2 items
-3 payments
-```
-
-This corroborates the multiplication pattern described in the Jira issue.
-
-However, this repository data is **supporting implementation/test evidence**, not current Snowflake runtime evidence.
-
----
-
-# 26. Current Snowflake Runtime Boundary
-
-At the investigated runtime state:
-
-```text
-BRONZE.SALES          = 0 rows
-BRONZE.PAYMENTS       = 8 rows
-SILVER.FACT_SALES     = 0 rows
-GOLD.VW_SALES_KPI     = 0 rows
-```
-
-Therefore:
-
-```text
-PAYMENTS
-```
-
-contains actual current Snowflake records, including split-payment patterns.
-
-However:
-
-```text
-SALES
-FACT_SALES
-GOLD.VW_SALES_KPI
-```
-
-are empty.
-
-Consequently, the full reported revenue duplication cannot be reproduced end-to-end using the current populated Snowflake runtime.
-
-The Agent must report:
-
-```text
-Runtime validation blocked.
-```
-
-It must not simulate sales rows to manufacture a runtime result.
-
----
-
-# 27. Order 1004 Conflict
-
-The investigation found different descriptions of Order 1004.
-
-The Jira issue description states:
-
-```text
-2 sales rows
-3 successful payments
-```
-
-A Jira comment contains a different item count.
-
-The GitHub test data supports:
-
-```text
-2 items
-3 payments
-```
-
-The current Snowflake sales table cannot resolve the conflict because:
-
-```text
-BRONZE.SALES = 0 rows
-```
-
-The correct Agent behavior is to explicitly identify the conflict and preserve the evidence boundary.
-
----
-
-# 28. RCA Interpretation
-
-The implementation evidence supports the technical mechanism:
-
-```text
-Direct item-grain sales to payment-grain joining
-can create many-to-many row multiplication.
-```
-
-The GitHub implementation also contains a payment aggregation approach intended to prevent this multiplication.
-
-However, because the current Snowflake sales/fact/gold runtime data is empty, the completed investigation does not claim that the current deployed runtime has independently passed the FSP-8 reproduction and fix validation.
-
-This is an intentional evidence boundary.
-
----
-
-# 29. Fix Status Model
-
-The Agent uses explicit fix-status language.
-
-## Schema Support Confirmed
-
-Use when supporting columns/objects exist.
-
-```text
-The schema supports the required payment aggregation.
-```
-
-This does not prove runtime correctness.
-
----
-
-## Fix Logic Confirmed in Transformation
-
-Use when the relevant transformation SQL has been inspected and contains the expected fix pattern.
-
-For FSP-8:
-
-```text
-Payment data is aggregated by ORDER_ID before joining to sales.
-```
-
----
-
-## Runtime Behavior Validated
-
-Use only when populated target data passes the relevant runtime checks.
-
-This was **not established for the current empty sales/fact/gold runtime**.
-
----
-
-## Deployment Documented
-
-Use when a trusted source explicitly documents deployment.
-
-It should not be confused with independent runtime validation.
-
----
-
-# 30. RBAC Architecture
+# 19. RBAC Architecture
 
 The investigation role is:
 
@@ -1260,7 +893,7 @@ The investigation workload is designed to be read-only.
 
 ---
 
-# 31. Read-Only Investigation Controls
+# 20. Read-Only Investigation Controls
 
 The Agent instructions explicitly prohibit data-changing SQL during investigation.
 
@@ -1289,7 +922,7 @@ The objective is to prevent the investigation Agent from changing the data platf
 
 ---
 
-# 32. Jira Write Governance
+# 21. Jira Write Governance
 
 The Agent also cannot silently modify Jira.
 
@@ -1321,7 +954,7 @@ autonomous enterprise action
 
 ---
 
-# 33. Persona Architecture
+# 22. Persona Architecture
 
 Three personas are implemented.
 
@@ -1344,57 +977,7 @@ Only the response emphasis changes.
 
 ---
 
-# 34. End-to-End Data and Evidence Flow
-
-The complete flow is:
-
-```text
-                    User Question
-                         │
-                         ▼
-                   Cortex Agent
-                         │
-              ┌──────────┼──────────┐
-              ▼          ▼          ▼
-            Jira      Snowflake   GitHub
-             MCP         MCP       MCP
-              │           │          │
-              ▼           ▼          ▼
-          Documented    Runtime   Implementation
-           evidence     evidence    evidence
-              │           │          │
-              └───────────┼──────────┘
-                          ▼
-                 Evidence Reconciliation
-                          │
-             ┌────────────┼────────────┐
-             ▼            ▼            ▼
-            Grain       Conflict       Data
-           Analysis     Analysis     Availability
-             │            │            │
-             └────────────┼────────────┘
-                          ▼
-                     RCA Class
-                          │
-                          ▼
-                  Business Impact
-                          │
-                          ▼
-                 Resolution Guidance
-                          │
-                          ▼
-                 Regression Guidance
-                          │
-                          ▼
-               Proposed Jira Comment
-                          │
-                          ▼
-                   Human Approval
-```
-
----
-
-# 35. Configuration-as-Code Direction
+# 23. Configuration-as-Code Direction
 
 The project keeps major implementation artifacts in the repository.
 
@@ -1422,7 +1005,7 @@ The repository therefore acts as the engineering record for:
 
 ---
 
-# 36. Cost-Aware Technical Design
+# 24. Cost-Aware Technical Design
 
 The POC was intentionally designed for a Snowflake trial environment.
 
@@ -1450,33 +1033,7 @@ This keeps the architecture focused and reduces unnecessary compute.
 
 ---
 
-# 37. Evaluation Architecture
-
-The evaluation layer tests whether the Agent follows the investigation rules.
-
-The scenarios cover areas such as:
-
-```text
-Jira retrieval
-GitHub implementation inspection
-Multi-source investigation
-Conflict detection
-Empty-data handling
-Persona behavior
-```
-
-The completed representative evaluation run produced:
-
-```text
-6 executed
-6 passed
-```
-
-The evaluation was intentionally stopped after the core POC behavior was sufficiently demonstrated.
-
----
-
-# 38. Important Architecture Boundaries
+# 25. Important Architecture Boundaries
 
 The following statements describe the current implementation accurately.
 
@@ -1516,106 +1073,3 @@ Multi-agent orchestration
 ```
 
 ---
-
-# 39. Technical Design Principles
-
-## Principle 1 — Evidence Before Conclusions
-
-The Agent must gather evidence before assigning RCA.
-
----
-
-## Principle 2 — Source-Specific Trust
-
-Different systems provide different types of evidence.
-
-```text
-Jira      → documented business context
-Snowflake → runtime/data evidence
-GitHub    → implementation evidence
-```
-
----
-
-## Principle 3 — Grain First
-
-For data-quality investigations, determine table grain before reasoning about aggregation correctness.
-
----
-
-## Principle 4 — No Fabricated Runtime Evidence
-
-Empty data must remain empty in the analysis.
-
----
-
-## Principle 5 — Schema Is Not Behavior
-
-Columns and objects show capability, not runtime correctness.
-
----
-
-## Principle 6 — Conflicts Are Evidence
-
-Conflicting source statements should be surfaced rather than silently resolved.
-
----
-
-## Principle 7 — Read-Only by Default
-
-Investigation should not modify the data platform.
-
----
-
-## Principle 8 — Human Approval for External Actions
-
-The Agent can prepare a Jira update but requires explicit human approval before posting it.
-
----
-
-## Principle 9 — Persona Does Not Change Facts
-
-Presentation may change, but evidence classification and RCA should remain consistent.
-
----
-
-# 40. Technical Outcome
-
-The completed architecture establishes a practical Snowflake-native pattern:
-
-```text
-Enterprise Issue
-      ↓
-Jira MCP
-      ↓
-Cortex Agent
-      ↓
-Snowflake MCP ──────────────┐
-      │                     │
-      ▼                     │
-Runtime Investigation       │
-                            │
-GitHub MCP ────────────────┤
-      │                     │
-      ▼                     │
-Implementation Evidence     │
-                            ▼
-                    Evidence Reconciliation
-                            │
-                            ▼
-                       RCA / Impact
-                            │
-                            ▼
-                    Regression Guidance
-                            │
-                            ▼
-                     Human Approval
-```
-
-The architecture demonstrates that MCP is being used as an **enterprise tool-access layer**, while Snowflake remains the data and analytical foundation.
-
-The Cortex Agent provides orchestration, and the investigation skill provides behavioral governance.
-
-The resulting system is therefore more accurately described as:
-
-> **A governed, evidence-driven data-quality investigation workflow implemented on Snowflake Cortex Agent and MCP.**
