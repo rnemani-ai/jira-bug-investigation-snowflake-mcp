@@ -120,6 +120,19 @@ The completed POC includes:
 
 ---
 
+## 🛠️ Tools & Technologies
+
+| Category | Technologies |
+|---|---|
+| **Cloud / Data Platform** | Snowflake, Snowflake Cortex |
+| **AI / Agent** | Cortex Agent, CoCo, CoWork, Investigation Skills |
+| **MCP** | Snowflake MCP, Atlassian Jira MCP, GitHub MCP |
+| **Data Engineering** | SQL, Bronze/Silver/Gold, Semantic Views |
+| **Source Control** | GitHub, Snowflake Git, GitHub App |
+| **Integrations** | Jira Cloud, GitHub |
+| **Security & Governance** | Snowflake RBAC, OAuth, Read-only Investigation, Human Approval |
+| **Evaluation** | Agent Evaluation Scenarios, Regression Testing, Expected Results |
+
 ## 3. Phase 1 → Phase 2
 
 ![Phase 1 and Phase 2](docs/images/phase-1-phase-2.png)
